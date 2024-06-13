@@ -54,7 +54,6 @@ jobs:
                                                        Error::Simple \
                                                        IO::String \
                                                        Module::Install::ReadmeFromPod \
-                                                       Module::Install::Repository \
                                                        Object::Tiny \
                                                        Regexp::Common \
                                                        Test::Exception \
@@ -91,7 +90,6 @@ jobs:
                                                        Error::Simple \
                                                        IO::String \
                                                        Module::Install::ReadmeFromPod \
-                                                       Module::Install::Repository \
                                                        Object::Tiny \
                                                        Regexp::Common \
                                                        Test::Exception \
