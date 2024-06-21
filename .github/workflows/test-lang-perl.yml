@@ -52,14 +52,14 @@ jobs:
           cpanm --mirror https://www.cpan.org/ install Compress::Zstd \
                                                        Encode \
                                                        Error::Simple \
+                                                       Module::Install \
                                                        Module::Install::ReadmeFromPod \
                                                        Object::Tiny \
                                                        Regexp::Common \
                                                        Test::Exception \
                                                        Test::More \
                                                        Test::Pod \
-                                                       Try::Tiny \
-                                                       inc::Module::Install
+                                                       Try::Tiny
 
       - name: Lint
         run: ./build.sh lint
@@ -89,14 +89,14 @@ jobs:
                                                        Compress::Zstd \
                                                        Encode \
                                                        Error::Simple \
+                                                       Module::Install \
                                                        Module::Install::ReadmeFromPod \
                                                        Object::Tiny \
                                                        Regexp::Common \
                                                        Test::Exception \
                                                        Test::More \
                                                        Test::Pod \
-                                                       Try::Tiny \
-                                                       inc::Module::Install
+                                                       Try::Tiny
 
       - name: Cache Local Maven Repository
         uses: actions/cache@v4
