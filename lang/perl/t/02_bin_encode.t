@@ -33,8 +33,10 @@ sub primitive {
 
     my $encoded;
     my $method = "encode_$type";
+    my $schema = Avro::Schema->parse(qq["$type"]);
+
     Avro::BinaryEncoder->$method(
-        undef, $data, sub { $encoded = ${$_[0]} }
+        $schema, $data, sub { $encoded = ${$_[0]} }
     );
     return $encoded;
 }

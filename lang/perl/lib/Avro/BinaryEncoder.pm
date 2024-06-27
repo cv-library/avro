@@ -19,30 +19,11 @@ package Avro::BinaryEncoder;
 use strict;
 use warnings;
 
-use Config;
 use Encode();
-use Error::Simple;
-use Regexp::Common qw(number);
-use JSON::PP; # For is_bool
+use Avro::BinaryEncoder::Error;
+use List::Util;
 
 our $VERSION = '++MODULE_VERSION++';
-
-# Private function deleted below, should be a lexical sub
-sub _bigint {
-    require Math::BigInt;
-    my $val = Math::BigInt->new(shift);
-
-    $Config{use64bitint}
-        ? 0 + $val->bstr() # numify() loses precision
-        : $val;
-}
-
-# Avro type limits
-# Private constants deleted below
-use constant INT_MAX => 0x7FFF_FFFF;
-use constant INT_MIN => -0x8000_0000;
-use constant LONG_MAX => _bigint('0x7FFF_FFFF_FFFF_FFFF');
-use constant LONG_MIN => _bigint('-0x8000_0000_0000_0000');
 
 =head2 encode(%param)
 
@@ -71,9 +52,25 @@ in parameters.
 
 =cut
 
+my $stringify = sub {
+    defined $_[0]
+        ? ref $_[0]
+            ? ( 'a ' . ref($_[0]) . ' reference' )
+            : "'$_[0]'"
+        : '<UNDEF>';
+};
+
+my $validate = sub {
+    my ( $class, $data, $slug ) = @_;
+
+    return if $class->is_data_valid($data);
+
+    my $name = $data->$stringify;
+    throw Avro::BinaryEncoder::Error( "$name is not a valid $slug value")
+};
+
 sub encode {
-    my $class = shift;
-    my %param = @_;
+    my ( $class, %param ) = @_;
     my ($schema, $data, $cb) = @param{qw/schema data emit_cb/};
 
     ## a schema can also be just a string
@@ -90,22 +87,9 @@ sub encode_null {
 }
 
 sub encode_boolean {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
+    my ($class, $schema, $data, $cb) = @_;
 
-    throw Avro::BinaryEncoder::Error( "<UNDEF> is not a valid boolean value")
-        unless defined $data;
-
-    if ( my $type = ref $data ) {
-        throw Avro::BinaryEncoder::Error("cannot encode a '$type' reference as boolean")
-            unless $type eq 'JSON::PP::Boolean';
-    }
-    else {
-        throw Avro::BinaryEncoder::Error( "'$data' is not a valid boolean value")
-            unless $data eq '' # For Perl versions without builtin::is_bool
-                || JSON::PP::is_bool($data)
-                || $data =~ /^(?:true|t|false|f|yes|y|no|n|0|1)$/i;
-    }
+    ( $schema // 'Avro::Schema::Primitive::Boolean' )->$validate( $data, 'boolean' );
 
     # Some values might be false but evaluate to "truthy" for Perl,
     # like the string 'false'. For these known exceptions, which
@@ -117,58 +101,55 @@ sub encode_boolean {
 }
 
 sub encode_int {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
-    if ($data !~ /^$RE{num}{int}$/) {
-        throw Avro::BinaryEncoder::Error("cannot convert '$data' to integer");
-    }
-    if ($data > INT_MAX || $data < INT_MIN) {
-        throw Avro::BinaryEncoder::Error("data ($data) out of range for Avro 'int'");
-    }
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Primitive::Int' )->$validate( $data, 'integer' );
 
     my $enc = unsigned_varint(zigzag($data));
     $cb->(\$enc);
 }
 
 sub encode_long {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
-    if ($data !~ /^$RE{num}{int}$/) {
-        throw Avro::BinaryEncoder::Error("cannot convert '$data' to long integer");
-    }
-    if ($data > LONG_MAX || $data < LONG_MIN) {
-        throw Avro::BinaryEncoder::Error("data ($data) out of range for Avro 'long'");
-    }
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Primitive::Long' )->$validate( $data, 'long' );
+
     my $enc = unsigned_varint(zigzag($data));
     $cb->(\$enc);
 }
 
 sub encode_float {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Primitive::Float' )->$validate( $data, 'float' );
+
     my $enc = pack "f<", $data;
     $cb->(\$enc);
 }
 
 sub encode_double {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Primitive::Double' )->$validate( $data, 'double' );
+
     my $enc = pack "d<", $data;
     $cb->(\$enc);
 }
 
 sub encode_bytes {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
-    throw Avro::BinaryEncoder::Error("Invalid data given for 'bytes': Contains values >255")
-        unless utf8::downgrade($data, 1);
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Primitive::Bytes' )->$validate( $data, 'byte' );
+
     encode_long($class, undef, length($data), $cb);
     $cb->(\$data);
 }
 
 sub encode_string {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Primitive::String' )->$validate( $data, 'string' );
+
     my $bytes = Encode::encode_utf8($data);
     encode_long($class, undef, length($bytes), $cb);
     $cb->(\$bytes);
@@ -179,8 +160,7 @@ sub encode_string {
 ## concatenation of the encodings of its fields. Field values are encoded per
 ## their schema.
 sub encode_record {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
+    my ($class, $schema, $data, $cb) = @_;
     for my $field (@{ $schema->fields }) {
         $class->encode(
             schema  => $field->{type},
@@ -193,12 +173,12 @@ sub encode_record {
 ## 1.3.2 An enum is encoded by a int, representing the zero-based position of
 ## the symbol in the schema.
 sub encode_enum {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
-    my $symbols = $schema->symbols_as_hash;
-    my $pos = $symbols->{ $data };
-    throw Avro::BinaryEncoder::Error("Cannot find enum $data")
-        unless defined $pos;
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Enum' )->$validate( $data, 'enum' );
+
+    my $pos = $schema->symbols_as_hash->{$data};
+
     $class->encode_int(undef, $pos, $cb);
 }
 
@@ -211,8 +191,9 @@ sub encode_enum {
 
 ## maybe here it would be worth configuring what a typical block size should be
 sub encode_array {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Array' )->$validate( $data, 'array' );
 
     ## FIXME: multiple blocks
     if (@$data) {
@@ -241,8 +222,9 @@ sub encode_array {
 ## the block. This block size permits fast skipping through data, e.g., when
 ## projecting a record to a subset of its fields.
 sub encode_map {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
+    my ($class, $schema, $data, $cb) = @_;
+
+    ( $schema // 'Avro::Schema::Map' )->$validate( $data, 'map' );
 
     my @keys = keys %$data;
     if (@keys) {
@@ -267,20 +249,19 @@ sub encode_map {
 ## zero-based position within the union of the schema of its value. The value
 ## is then encoded per the indicated schema within the union.
 sub encode_union {
-    my $class = shift;
-    my ($schema, $data, $cb) = @_;
-    my $idx = 0;
-    my $elected_schema;
-    for my $inner_schema (@{$schema->schemas}) {
-        if ($inner_schema->is_data_valid($data)) {
-            $elected_schema = $inner_schema;
-            last;
-        }
-        $idx++;
-    }
+    my ($class, $schema, $data, $cb) = @_;
+
+    my $schemas = $schema->schemas;
+
+    my ( $idx, $elected_schema )
+        = List::Util::pairfirst { $b->is_data_valid($data) }
+        map { $_ => $schemas->[$_] } 0 .. $#$schemas;
+
     unless ($elected_schema) {
-        throw Avro::BinaryEncoder::Error("union cannot validate the data");
+        my $name = $data->$stringify;
+        throw Avro::BinaryEncoder::Error("$name is not valid for " . $schema->to_string . " union");
     }
+
     $class->encode_long(undef, $idx, $cb);
     $class->encode(
         schema => $elected_schema,
@@ -295,14 +276,7 @@ sub encode_fixed {
     my $class = shift;
     my ($schema, $data, $cb) = @_;
 
-    throw Avro::BinaryEncoder::Error("Invalid data given for 'fixed': Contains values >255")
-        unless utf8::downgrade($data, 1);
-
-    my $length = length $data;
-    my $size   = $schema->size;
-
-    throw Avro::BinaryEncoder::Error("Fixed size doesn't match $length!=$size")
-        unless $length == $size;
+    ( $schema // 'Avro::Schema::Fixed' )->$validate( $data, 'fixed' );
 
     $cb->(\$data);
 }
@@ -324,11 +298,5 @@ sub unsigned_varint {
     push @bytes, $_[0]; # last byte
     return pack "C*", @bytes;
 }
-
-# Delete private symbols to avoid adding them to the API
-delete $Avro::BinaryEncoder::{$_} for '_bigint', <{INT,LONG}_{MIN,MAX}>;
-
-package Avro::BinaryEncoder::Error;
-use parent 'Error::Simple';
 
 1;
