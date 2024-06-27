@@ -34,6 +34,7 @@ use constant MARKER_SIZE => 16;
 use Avro::DataFile;
 use Avro::BinaryDecoder;
 use Avro::Schema;
+use Avro::DataFile::Error::UnsupportedCodec;
 use Carp;
 use Compress::Zstd;
 use IO::Uncompress::Bunzip2 qw(bunzip2);
@@ -304,8 +305,5 @@ sub eof {
     return 1 if $datafile->{fh}->eof;
     return 0;
 }
-
-package Avro::DataFile::Error::UnsupportedCodec;
-use parent 'Error::Simple';
 
 1;

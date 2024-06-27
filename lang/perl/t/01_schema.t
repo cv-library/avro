@@ -382,7 +382,7 @@ EOJ
     my $s2 = Avro::Schema->parse($string);
     is_deeply $s2, $schema, "reserialized identically";
 }
-    
+
 # fixed type referenced using short name without namespace
 {
     my $s = <<EOJ;
@@ -399,7 +399,7 @@ EOJ
 }
 EOJ
     my $schema = Avro::Schema->parse($s);
-    
+
     is $schema->type, 'record', 'HandshakeRequest type ok';
     is $schema->namespace, 'org.apache.avro.ipc', 'HandshakeRequest namespace ok';
     is $schema->fields->[0]->{type}->{name}, 'MD5', 'HandshakeRequest clientHash type ok';
@@ -486,7 +486,7 @@ EOJ
 ## is_data_valid for primitives
 for my $type ( qw( int long float double string bytes boolean ) ) {
     my $schema = Avro::Schema->parse(qq[{ "type": "$type" }]);
-    is $schema->is_data_valid(undef), 0, "$type is_data_valid undef";
+    is $schema->is_data_valid(undef), !!0, "$type is_data_valid undef";
 }
 
 sub match_ok {

@@ -23,6 +23,7 @@ use Config;
 use Encode();
 use Error::Simple;
 use Avro::Schema;
+use Avro::Schema::Error::Mismatch;
 
 our $VERSION = '++MODULE_VERSION++';
 
