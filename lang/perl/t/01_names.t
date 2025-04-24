@@ -20,13 +20,13 @@ use warnings;
 
 use Test::More;
 use Test::Exception;
-use_ok 'Avro::Schema';
+use_ok 'Avro::Schema::Record';
 
 ## name validation
 {
     no warnings 'qw';
     my @bad_names = qw/0 01 0a $ % $s . - -1 (x) #s # π
-                       @ !q ^f [ ( { } ) ] ~ ` ?a :a ;a 
+                       @ !q ^f [ ( { } ) ] ~ ` ?a :a ;a
                        a- a^ a% a[ .. ... .a .a. a./;
 
     my @bad_namespaces = @bad_names;

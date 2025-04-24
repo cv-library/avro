@@ -53,6 +53,7 @@ jobs:
                                                        Encode \
                                                        Error::Simple \
                                                        JSON::MaybeXS \
+                                                       List::Util \
                                                        Module::Install \
                                                        Module::Install::ReadmeFromPod \
                                                        Object::Tiny \
@@ -92,6 +93,7 @@ jobs:
                                                        Encode \
                                                        Error::Simple \
                                                        JSON::MaybeXS \
+                                                       List::Util \
                                                        Module::Install \
                                                        Module::Install::ReadmeFromPod \
                                                        Object::Tiny \

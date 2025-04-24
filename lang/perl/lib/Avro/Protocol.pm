@@ -24,7 +24,7 @@ use JSON::MaybeXS ();
 use Try::Tiny;
 use Avro::Protocol::Message;
 use Avro::Schema;
-use Error;
+use Avro::Protocol::Error::Parse;
 use Object::Tiny qw{
     name
     namespace
@@ -109,8 +109,5 @@ sub fullname {
     my $protocol = shift;
     return join ".", grep { $_ } map { $protocol->$_ } qw{ namespace name };
 }
-
-package Avro::Protocol::Error::Parse;
-use parent 'Error::Simple';
 
 1;

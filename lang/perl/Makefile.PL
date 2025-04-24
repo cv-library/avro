@@ -45,6 +45,7 @@ requires 'Compress::Zstd';
 requires 'Encode';
 requires 'Error::Simple';
 requires 'JSON::MaybeXS';
+requires 'List::Util';
 requires 'Object::Tiny';
 requires 'Regexp::Common';
 requires 'Try::Tiny';

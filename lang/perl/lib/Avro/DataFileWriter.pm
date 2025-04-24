@@ -36,7 +36,7 @@ use Avro::DataFile;
 use Avro::Schema;
 use Carp;
 use Compress::Zstd;
-use Error::Simple;
+use Avro::DataFile::Error::InvalidCodec;
 use IO::Compress::Bzip2 qw(bzip2 $Bzip2Error);
 use IO::Compress::RawDeflate qw(rawdeflate $RawDeflateError);
 
@@ -221,8 +221,5 @@ sub DESTROY {
     $datafile->flush;
     return 1;
 }
-
-package Avro::DataFile::Error::InvalidCodec;
-use parent 'Error::Simple';
 
 1;
